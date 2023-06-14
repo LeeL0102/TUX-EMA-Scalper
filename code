@@ -1,0 +1,50 @@
+//@version=5
+strategy(title="Tony's EMA Scalper - Buy / Sell", shorttitle="TUX EMA Scalper", overlay=true)
+
+len = input.int(20, "Length", minval=1)
+src = input(close, title="Source")
+
+emaValue = ta.ema(src, len)
+
+plot(emaValue, title="EMA", color=color.blue)
+
+last8h = ta.highest(close, 8)
+lastl8 = ta.lowest(close, 8)
+
+plot(last8h, color=color.red, linewidth=2)
+plot(lastl8, color=color.green, linewidth=2)
+
+bearish = ta.crossover(close, emaValue) and close[1] > close
+bullish = ta.crossover(close, emaValue) and close[1] < close
+
+plotshape(bearish, color=color.red, style=shape.arrowdown, text="Sell", location=location.abovebar)
+plotshape(bullish, color=color.green, style=shape.arrowup, text="Buy", location=location.belowbar)
+
+// Backtesting
+// Define strategy variables
+emaLength = input.int(20, "EMA Length", minval=1)
+takeProfitPct = input.float(1, "Take Profit (%)", minval=0, maxval=10)
+stopLossPct = input.float(0.5, "Stop Loss (%)", minval=0, maxval=10)
+
+// Calculate EMA
+emaValueBacktest = ta.ema(close, emaLength)
+
+// Generate Buy and Sell signals
+buySignal = ta.crossover(close, emaValueBacktest)
+sellSignal = ta.crossunder(close, emaValueBacktest)
+
+// Calculate Take Profit and Stop Loss levels
+takeProfitLevel = strategy.position_avg_price * (1 + takeProfitPct / 100)
+stopLossLevel = strategy.position_avg_price * (1 - stopLossPct / 100)
+
+// Exit conditions
+exitBuy = sellSignal or close >= takeProfitLevel or close <= stopLossLevel
+exitSell = buySignal or close <= takeProfitLevel or close >= stopLossLevel
+
+// Submit orders
+strategy.entry("Buy", strategy.long, when=buySignal)
+strategy.entry("Sell", strategy.short, when=sellSignal)
+
+// Exit orders
+strategy.exit("Exit Buy", "Buy", stop=stopLossLevel, limit=takeProfitLevel, when=exitBuy)
+strategy.exit("Exit Sell", "Sell", stop=stopLossLevel, limit=takeProfitLevel, when=exitSell)
